@@ -1,5 +1,7 @@
 # Foodgram
 
+[![Foodgram CI/CD](https://github.com/EvgeniyRudih/foodgram/actions/workflows/main.yml/badge.svg)](https://github.com/EvgeniyRudih/foodgram/actions/workflows/main.yml)
+
 Foodgram это веб-приложение для публикации рецептов. Пользователи могут создавать собственные рецепты, добавлять понравившиеся рецепты в избранное, подписываться на авторов и формировать список покупок.
 
 ## Возможности проекта
