@@ -1,14 +1,15 @@
+# infra/docker-compose.production.yml
 services:
   frontend:
     container_name: foodgram-front
-    build: ../frontend
+    image: ffreemann/foodgram-frontend:latest
     volumes:
       - frontend_build:/app/result_build
 
   db:
     container_name: foodgram-db
     image: postgres:15-alpine
-    env_file: ../.env
+    env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     healthcheck:
@@ -19,12 +20,11 @@ services:
 
   backend:
     container_name: foodgram-backend
-    build: ../backend
-    env_file: ../.env
+    image: ffreemann/foodgram-backend:latest
+    env_file: .env
     volumes:
       - static_value:/app/static/
       - media_value:/app/media/
-      - ../data:/app/data
     depends_on:
       db:
         condition: service_healthy
