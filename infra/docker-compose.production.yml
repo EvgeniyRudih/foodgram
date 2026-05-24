@@ -23,7 +23,7 @@ services:
     image: ffreemann/foodgram-backend:latest
     env_file: .env
     volumes:
-      - static_value:/app/static/
+      - static_value:/app/backend_static/
       - media_value:/app/media/
     depends_on:
       db:
@@ -38,7 +38,7 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - frontend_build:/usr/share/nginx/html:ro
       - ../docs/:/usr/share/nginx/redoc/:ro
-      - static_value:/var/html/static/:ro
+      - static_value:/var/html/backend_static/:ro
       - media_value:/var/html/media/:ro
     depends_on:
       - backend
