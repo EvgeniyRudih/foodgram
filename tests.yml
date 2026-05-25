@@ -3,3 +3,4 @@ foodgram_domain: http://158.160.244.252/
 dockerhub_username: ffreemann
 login: free
 password: free
+vm_name: r-backend-vm-68366836
