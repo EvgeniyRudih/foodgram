@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Count
 
 from .models import (
-    Favourite, Ingredient, Recipe, 
+    Favourite, Ingredient, Recipe,
     RecipeIngredient, ShoppingCart, Tag
 )
 
@@ -31,7 +31,7 @@ class RecipeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'author__username', 'author__email')
     list_filter = ('tags',)
     inlines = (RecipeIngredientInline,)
-    
+
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.annotate(

@@ -1,7 +1,8 @@
 import base64
 
 from django.core.files.base import ContentFile
-from djoser.serializers import UserCreateSerializer as DjoserUserCreateSerializer
+from djoser.serializers import (
+    UserCreateSerializer as DjoserUserCreateSerializer)
 from djoser.serializers import UserSerializer as DjoserUserSerializer
 from rest_framework import serializers
 
