@@ -1,12 +1,9 @@
 from django.contrib import admin
+from django.db.models import Count
 
 from .models import (
-    Favourite,
-    Ingredient,
-    Recipe,
-    RecipeIngredient,
-    ShoppingCart,
-    Tag,
+    Favourite, Ingredient, Recipe, 
+    RecipeIngredient, ShoppingCart, Tag
 )
 
 
@@ -34,10 +31,17 @@ class RecipeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'author__username', 'author__email')
     list_filter = ('tags',)
     inlines = (RecipeIngredientInline,)
+    
+    def get_queryset(self, request):
+        """Аннотация для подсчёта избранного одним запросом."""
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            _favourites_count=Count('favourites', distinct=True)
+        )
 
-    @admin.display(description='В избранном')
+    @admin.display(description='Избранное', ordering='_favourites_count')
     def favourites_count(self, obj):
-        return obj.favourites.count()
+        return obj._favourites_count
 
 
 @admin.register(Favourite)
