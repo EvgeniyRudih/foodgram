@@ -1,5 +1,5 @@
 repo_owner: ffreemann 
 foodgram_domain: http://158.160.244.252/
 dockerhub_username: ffreemann
-admin_log: free@free.com
-admin_pass: free
+login: free
+password: free
