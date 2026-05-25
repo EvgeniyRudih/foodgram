@@ -33,7 +33,6 @@ class RecipeAdmin(admin.ModelAdmin):
     inlines = (RecipeIngredientInline,)
     
     def get_queryset(self, request):
-        """Аннотация для подсчёта избранного одним запросом."""
         queryset = super().get_queryset(request)
         return queryset.annotate(
             _favourites_count=Count('favourites', distinct=True)
