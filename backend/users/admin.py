@@ -38,3 +38,4 @@ class SubscriptionAdmin(admin.ModelAdmin):
         'author__username',
         'author__email',
     )
+    list_filter = ('author',)

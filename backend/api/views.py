@@ -1,12 +1,13 @@
 from django.db.models import Sum
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.serializers import SetPasswordSerializer
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from recipes.models import (
     Favourite,
@@ -31,6 +32,14 @@ from .serializers import (
     UserSerializer,
     UserWithRecipesSerializer,
 )
+
+
+class RecipeShortLinkRedirectView(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, pk):
+        get_object_or_404(Recipe, id=pk)
+        return redirect(f'/recipes/{pk}')
 
 
 class TagViewSet(
@@ -180,7 +189,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    http_method_names = ['get', 'post', 'put', 'delete', 'head', 'options']
+    http_method_names = ('get', 'post', 'put', 'delete', 'head', 'options')
     pagination_class = PageNumberLimitPagination
 
     def get_serializer_class(self):

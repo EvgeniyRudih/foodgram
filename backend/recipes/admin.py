@@ -2,8 +2,12 @@ from django.contrib import admin
 from django.db.models import Count
 
 from .models import (
-    Favourite, Ingredient, Recipe,
-    RecipeIngredient, ShoppingCart, Tag
+    Favourite,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    ShoppingCart,
+    Tag,
 )
 
 
@@ -17,12 +21,14 @@ class RecipeIngredientInline(admin.TabularInline):
 class IngredientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'measurement_unit')
     search_fields = ('name',)
+    list_filter = ('measurement_unit',)
 
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'slug')
     search_fields = ('name', 'slug')
+    list_filter = ('name',)
 
 
 @admin.register(Recipe)
@@ -43,11 +49,22 @@ class RecipeAdmin(admin.ModelAdmin):
         return obj._favourites_count
 
 
+@admin.register(RecipeIngredient)
+class RecipeIngredientAdmin(admin.ModelAdmin):
+    list_display = ('id', 'recipe', 'ingredient', 'amount')
+    search_fields = ('recipe__name', 'ingredient__name')
+    list_filter = ('ingredient',)
+
+
 @admin.register(Favourite)
 class FavouriteAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'recipe')
+    search_fields = ('user__username', 'user__email', 'recipe__name')
+    list_filter = ('recipe',)
 
 
 @admin.register(ShoppingCart)
 class ShoppingCartAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'recipe')
+    search_fields = ('user__username', 'user__email', 'recipe__name')
+    list_filter = ('recipe',)

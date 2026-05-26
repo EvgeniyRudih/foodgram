@@ -1,19 +1,21 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from .constants import MAX_LENGTH_EMAIL, MAX_LENGTH_USER_NAME
+
 
 class User(AbstractUser):
     email = models.EmailField(
         unique=True,
-        max_length=254,
+        max_length=MAX_LENGTH_EMAIL,
         verbose_name='Email'
     )
     first_name = models.CharField(
-        max_length=150,
+        max_length=MAX_LENGTH_USER_NAME,
         verbose_name='Имя'
     )
     last_name = models.CharField(
-        max_length=150,
+        max_length=MAX_LENGTH_USER_NAME,
         verbose_name='Фамилия'
     )
     avatar = models.ImageField(
@@ -24,12 +26,12 @@ class User(AbstractUser):
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
-        ordering = ['username']
+        ordering = ('username',)
 
     def __str__(self):
         return self.email
@@ -52,17 +54,17 @@ class Subscription(models.Model):
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        ordering = ['user']
-        constraints = [
+        ordering = ('user',)
+        constraints = (
             models.UniqueConstraint(
-                fields=['user', 'author'],
+                fields=('user', 'author'),
                 name='unique_subscription'
             ),
             models.CheckConstraint(
                 check=~models.Q(user=models.F('author')),
                 name='prevent_self_subscription'
-            )
-        ]
+            ),
+        )
 
     def __str__(self):
         return f'{self.user} подписан на {self.author}'
