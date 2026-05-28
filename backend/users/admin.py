@@ -1,17 +1,20 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Count
 
 from .models import Subscription, User
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class FoodgramUserAdmin(UserAdmin):
     list_display = (
         'id',
         'username',
         'email',
         'first_name',
         'last_name',
+        'recipes_count',
+        'followers_count',
         'is_staff',
     )
     search_fields = (
@@ -28,6 +31,21 @@ class CustomUserAdmin(UserAdmin):
         ('Дополнительно', {'fields': ('avatar',)}),
     )
 
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            _recipes_count=Count('recipes', distinct=True),
+            _followers_count=Count('following', distinct=True),
+        )
+
+    @admin.display(description='Рецепты', ordering='_recipes_count')
+    def recipes_count(self, obj):
+        return obj._recipes_count
+
+    @admin.display(description='Подписчики', ordering='_followers_count')
+    def followers_count(self, obj):
+        return obj._followers_count
+
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
@@ -38,4 +56,3 @@ class SubscriptionAdmin(admin.ModelAdmin):
         'author__username',
         'author__email',
     )
-    list_filter = ('author',)

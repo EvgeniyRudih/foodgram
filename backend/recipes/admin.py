@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db.models import Count
+from django.utils.safestring import mark_safe
 
 from .models import (
     Favourite,
@@ -33,7 +34,16 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'author', 'favourites_count', 'pub_date')
+    list_display = (
+        'id',
+        'name',
+        'author',
+        'ingredients_list',
+        'tags_list',
+        'image_preview',
+        'favourites_count',
+        'pub_date',
+    )
     search_fields = ('name', 'author__username', 'author__email')
     list_filter = ('tags',)
     inlines = (RecipeIngredientInline,)
@@ -41,8 +51,26 @@ class RecipeAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.annotate(
-            _favourites_count=Count('favourites', distinct=True)
+            _favourites_count=Count('subscribers', distinct=True)
+        ).prefetch_related('tags', 'ingredients')
+
+    @admin.display(description='Ингредиенты')
+    def ingredients_list(self, obj):
+        return ', '.join(
+            ingredient.name for ingredient in obj.ingredients.all()
         )
+
+    @admin.display(description='Теги')
+    def tags_list(self, obj):
+        return ', '.join(tag.name for tag in obj.tags.all())
+
+    @admin.display(description='Картинка')
+    def image_preview(self, obj):
+        if obj.image:
+            return mark_safe(
+                f'<img src="{obj.image.url}" width="80" height="60">'
+            )
+        return 'Нет изображения'
 
     @admin.display(description='Избранное', ordering='_favourites_count')
     def favourites_count(self, obj):

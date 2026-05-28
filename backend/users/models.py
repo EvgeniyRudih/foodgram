@@ -5,28 +5,28 @@ from .constants import MAX_LENGTH_EMAIL, MAX_LENGTH_USER_NAME
 
 
 class User(AbstractUser):
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
+
     email = models.EmailField(
         unique=True,
         max_length=MAX_LENGTH_EMAIL,
-        verbose_name='Email'
+        verbose_name='Email',
     )
     first_name = models.CharField(
         max_length=MAX_LENGTH_USER_NAME,
-        verbose_name='Имя'
+        verbose_name='Имя',
     )
     last_name = models.CharField(
         max_length=MAX_LENGTH_USER_NAME,
-        verbose_name='Фамилия'
+        verbose_name='Фамилия',
     )
     avatar = models.ImageField(
         upload_to='users/avatars/',
         null=True,
         blank=True,
-        verbose_name='Аватар'
+        verbose_name='Аватар',
     )
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -41,14 +41,14 @@ class Subscription(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='follower',
-        verbose_name='Подписчик'
+        related_name='subscriptions',
+        verbose_name='Подписчик',
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='following',
-        verbose_name='Автор'
+        related_name='subscribers',
+        verbose_name='Автор',
     )
 
     class Meta:
@@ -58,11 +58,11 @@ class Subscription(models.Model):
         constraints = (
             models.UniqueConstraint(
                 fields=('user', 'author'),
-                name='unique_subscription'
+                name='unique_subscription',
             ),
             models.CheckConstraint(
                 check=~models.Q(user=models.F('author')),
-                name='prevent_self_subscription'
+                name='prevent_self_subscription',
             ),
         )
 

@@ -8,7 +8,11 @@ from api.views import RecipeShortLinkRedirectView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
-    path('s/<int:pk>/', RecipeShortLinkRedirectView.as_view()),
+    path(
+        's/<int:pk>/',
+        RecipeShortLinkRedirectView.as_view(),
+        name='recipe-short-link',
+    )
 ]
 
 if settings.DEBUG:
