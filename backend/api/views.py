@@ -125,12 +125,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        return self.create_user_recipe_relation(Favourite, request.user, recipe)
+        return self.create_user_recipe_relation(Favourite,
+                                                request.user, recipe)
 
     @favorite.mapping.delete
     def delete_favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        return self.delete_user_recipe_relation(Favourite, request.user, recipe)
+        return self.delete_user_recipe_relation(Favourite,
+                                                request.user, recipe)
 
     @action(
         detail=True,
