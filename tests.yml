@@ -1,5 +1,5 @@
 repo_owner: ffreemann 
-foodgram_domain: https://footgram.ddns.net/
+foodgram_domain: http://footgram.ddns.net/
 dockerhub_username: ffreemann
 login: free
 password: free
