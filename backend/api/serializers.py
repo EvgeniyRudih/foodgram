@@ -8,11 +8,15 @@ from recipes.models import (
     Recipe,
     RecipeIngredient,
     Tag,
+    Favourite,
+    ShoppingCart,
 )
 from users.models import Subscription, User
 from .constants import (
     MIN_COOKING_TIME,
     MIN_INGREDIENT_AMOUNT,
+    MAX_INGREDIENT_AMOUNT,
+    MAX_COOKING_TIME,
 )
 
 
@@ -31,7 +35,7 @@ class UserSerializer(DjoserUserSerializer):
         return bool(
             request
             and request.user.is_authenticated
-            and obj.subscribers.filter(user=request.user).exists()
+            and obj.author_followers.filter(user=request.user).exists()
         )
 
     def get_avatar(self, obj):
@@ -137,15 +141,16 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 
 class RecipeIngredientWriteSerializer(serializers.Serializer):
-    id = serializers.PrimaryKeyRelatedField(
-        queryset=Ingredient.objects.all()
-    )
+    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
     amount = serializers.IntegerField(
         min_value=MIN_INGREDIENT_AMOUNT,
+        max_value=MAX_INGREDIENT_AMOUNT,
         error_messages={
             'min_value': (
-                f'Количество ингредиента не может быть '
-                f'меньше {MIN_INGREDIENT_AMOUNT}.'
+                f'Количество не может быть меньше {MIN_INGREDIENT_AMOUNT}.'
+            ),
+            'max_value': (
+                f'Количество не может быть больше {MAX_INGREDIENT_AMOUNT}.'
             ),
         },
     )
@@ -160,10 +165,13 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     cooking_time = serializers.IntegerField(
         min_value=MIN_COOKING_TIME,
+        max_value=MAX_COOKING_TIME,
         error_messages={
             'min_value': (
-                f'Время приготовления не может быть меньше '
-                f'{MIN_COOKING_TIME}.'
+                f'Время приготовления не может быть меньше {MIN_COOKING_TIME}.'
+            ),
+            'max_value': (
+                f'Время приготовления не может быть больше {MAX_COOKING_TIME}.'
             ),
         },
     )
@@ -236,11 +244,11 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ingredients = validated_data.pop('ingredients', None)
         tags = validated_data.pop('tags', None)
 
-        if ingredients is None:
+        if not ingredients:
             raise serializers.ValidationError(
                 {'ingredients': 'Это поле обязательно при обновлении.'}
             )
-        if tags is None:
+        if not tags:
             raise serializers.ValidationError(
                 {'tags': 'Это поле обязательно при обновлении.'}
             )
@@ -289,3 +297,48 @@ class AvatarSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('avatar',)
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        rep = super().to_representation(instance)
+        if instance.avatar and request:
+            rep['avatar'] = request.build_absolute_uri(instance.avatar.url)
+        return rep
+
+
+class FavouriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favourite
+        fields = ('user', 'recipe')
+
+    def validate(self, attrs):
+        if Favourite.objects.filter(
+            user=attrs['user'], recipe=attrs['recipe']
+        ).exists():
+            raise serializers.ValidationError('Рецепт уже в избранном.')
+        return attrs
+
+    def to_representation(self, instance):
+        return RecipeShortSerializer(
+            instance.recipe,
+            context=self.context,
+        ).data
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShoppingCart
+        fields = ('user', 'recipe')
+
+    def validate(self, attrs):
+        if ShoppingCart.objects.filter(
+            user=attrs['user'], recipe=attrs['recipe']
+        ).exists():
+            raise serializers.ValidationError('Рецепт уже в списке покупок.')
+        return attrs
+
+    def to_representation(self, instance):
+        return RecipeShortSerializer(
+            instance.recipe,
+            context=self.context,
+        ).data

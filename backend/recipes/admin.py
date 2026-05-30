@@ -66,11 +66,9 @@ class RecipeAdmin(admin.ModelAdmin):
 
     @admin.display(description='Картинка')
     def image_preview(self, obj):
-        if obj.image:
-            return mark_safe(
-                f'<img src="{obj.image.url}" width="80" height="60">'
-            )
-        return 'Нет изображения'
+        return mark_safe(
+            f'<img src="{obj.image.url}" width="80" height="60">'
+        )
 
     @admin.display(description='Избранное', ordering='_favourites_count')
     def favourites_count(self, obj):

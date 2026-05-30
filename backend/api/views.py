@@ -3,7 +3,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
-from djoser.serializers import SetPasswordSerializer
 from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -11,6 +10,22 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .filters import IngredientFilter, RecipeFilter
+from .pagination import PageNumberLimitPagination
+from .permissions import IsAuthorOrReadOnly
+from .serializers import (
+    AvatarSerializer,
+    FavouriteSerializer,
+    IngredientSerializer,
+    RecipeReadSerializer,
+    RecipeWriteSerializer,
+    ShoppingCartSerializer,
+    SubscribeCreateSerializer,
+    TagSerializer,
+    UserSerializer,
+    UserWithRecipesSerializer,
+)
+from .utils import format_shopping_cart
 from recipes.models import (
     Favourite,
     Ingredient,
@@ -20,20 +35,6 @@ from recipes.models import (
     Tag,
 )
 from users.models import Subscription, User
-from .filters import IngredientFilter, RecipeFilter
-from .pagination import PageNumberLimitPagination
-from .permissions import IsAuthorOrReadOnly
-from .serializers import (
-    AvatarSerializer,
-    IngredientSerializer,
-    RecipeReadSerializer,
-    RecipeShortSerializer,
-    RecipeWriteSerializer,
-    SubscribeCreateSerializer,
-    TagSerializer,
-    UserSerializer,
-    UserWithRecipesSerializer,
-)
 
 
 class RecipeShortLinkRedirectView(APIView):
@@ -94,17 +95,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return RecipeReadSerializer
         return RecipeWriteSerializer
 
-    def create_user_recipe_relation(self, model, user, recipe):
-        _, created = model.objects.get_or_create(user=user, recipe=recipe)
-        if not created:
-            return Response(
-                {'errors': 'Рецепт уже добавлен.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        serializer = RecipeShortSerializer(
-            recipe,
+    def create_user_recipe_relation(self, serializer_class, user, recipe):
+        serializer = serializer_class(
+            data={'user': user.id, 'recipe': recipe.id},
             context={'request': self.request},
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
@@ -125,7 +122,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        return self.create_user_recipe_relation(Favourite,
+        return self.create_user_recipe_relation(FavouriteSerializer,
                                                 request.user, recipe)
 
     @favorite.mapping.delete
@@ -142,11 +139,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        return self.create_user_recipe_relation(
-            ShoppingCart,
-            request.user,
-            recipe,
-        )
+        return self.create_user_recipe_relation(ShoppingCartSerializer,
+                                                request.user, recipe)
 
     @shopping_cart.mapping.delete
     def delete_shopping_cart(self, request, pk=None):
@@ -169,22 +163,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ).values(
             'ingredient__name',
             'ingredient__measurement_unit',
-        ).annotate(
-            amount_sum=Sum('amount')
-        ).order_by('ingredient__name')
+        ).annotate(amount_sum=Sum('amount')).order_by('ingredient__name')
 
-        lines = ['Список покупок:\n']
-        for item in ingredients:
-            lines.append(
-                f'- {item["ingredient__name"]} '
-                f'({item["ingredient__measurement_unit"]}) — '
-                f'{item["amount_sum"]}'
-            )
-
-        response = HttpResponse('\n'.join(lines), content_type='text/plain')
-        response['Content-Disposition'] = (
-            'attachment; filename="shopping_cart.txt"'
-        )
+        content = format_shopping_cart(ingredients)
+        response = HttpResponse(content,
+                                content_type='text/plain; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; ' \
+            'filename="shopping_cart.txt"'
         return response
 
     @action(
@@ -206,14 +191,7 @@ class UserViewSet(DjoserUserViewSet):
     pagination_class = PageNumberLimitPagination
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        if getattr(self, 'action', None) == 'subscriptions':
-            return queryset.filter(
-                subscribers__user=self.request.user
-            ).annotate(
-                recipes_count=Count('recipes')
-            )
-        return queryset
+        return super().get_queryset()
 
     def get_serializer_class(self):
         if self.action in ('subscriptions', 'subscribe'):
@@ -227,12 +205,12 @@ class UserViewSet(DjoserUserViewSet):
         url_path='subscriptions',
     )
     def subscriptions(self, request):
-        authors = self.get_queryset()
+        authors = self.get_queryset().filter(
+            author_followers__user=request.user
+        ).annotate(recipes_count=Count('recipes'))
         page = self.paginate_queryset(authors)
         serializer = UserWithRecipesSerializer(
-            page,
-            many=True,
-            context={'request': request},
+            page, many=True, context={'request': request},
         )
         return self.get_paginated_response(serializer.data)
 
@@ -245,21 +223,12 @@ class UserViewSet(DjoserUserViewSet):
     def subscribe(self, request, id=None):
         author = get_object_or_404(User, id=id)
         serializer = SubscribeCreateSerializer(
-            data={
-                'user': request.user.id,
-                'author': author.id,
-            },
+            data={'user': request.user.id, 'author': author.id},
             context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
-        subscription = serializer.save()
-        return Response(
-            UserWithRecipesSerializer(
-                subscription.author,
-                context={'request': request},
-            ).data,
-            status=status.HTTP_201_CREATED,
-        )
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @subscribe.mapping.delete
     def delete_subscribe(self, request, id=None):
@@ -302,28 +271,9 @@ class UserViewSet(DjoserUserViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(
-            {'avatar': request.build_absolute_uri(request.user.avatar.url)},
-            status=status.HTTP_200_OK,
-        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @avatar.mapping.delete
     def delete_avatar(self, request):
         request.user.avatar.delete(save=True)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(
-        detail=False,
-        methods=('post',),
-        permission_classes=(IsAuthenticated,),
-        url_path='set_password',
-    )
-    def set_password(self, request):
-        serializer = SetPasswordSerializer(
-            data=request.data,
-            context={'request': request},
-        )
-        serializer.is_valid(raise_exception=True)
-        request.user.set_password(serializer.validated_data['new_password'])
-        request.user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -10,10 +10,9 @@ from .constants import (
     MAX_LENGTH_TAG_SLUG,
     MIN_COOKING_TIME,
     MIN_INGREDIENT_AMOUNT,
+    MAX_POSITIVE_SMALLINT,
+    STR_REPRESENTATION_LENGTH
 )
-
-
-MAX_POSITIVE_SMALLINT = 32767
 
 
 class Ingredient(models.Model):
@@ -38,7 +37,10 @@ class Ingredient(models.Model):
         )
 
     def __str__(self):
-        return f'{self.name[:20]} ({self.measurement_unit[:20]})'
+        return (
+            f'{self.name[:STR_REPRESENTATION_LENGTH]} '
+            f'({self.measurement_unit[:STR_REPRESENTATION_LENGTH]})'
+        )
 
 
 class Tag(models.Model):

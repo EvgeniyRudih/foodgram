@@ -90,7 +90,7 @@ docker exec -it foodgram-backend python manage.py createsuperuser
 
 После успешного деплоя проект доступен по адресу:
 
-[http://158.160.244.252](http://158.160.244.252)
+[http://footgram.ddns.net](http://footgram.ddns.net)
 
 ## Автор
 
