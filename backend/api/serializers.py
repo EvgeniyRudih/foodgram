@@ -35,7 +35,8 @@ class UserSerializer(DjoserUserSerializer):
         return bool(
             request
             and request.user.is_authenticated
-            and obj.author_followers.filter(user=request.user).exists()
+            and obj.subscriptions_to_the_author.filter(user=request.user
+                                                       ).exists()
         )
 
     def get_avatar(self, obj):
@@ -306,39 +307,31 @@ class AvatarSerializer(serializers.ModelSerializer):
         return rep
 
 
-class FavouriteSerializer(serializers.ModelSerializer):
+class UserRecipeRelationSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = ('user', 'recipe')
+
+    def validate(self, attrs):
+        if self.Meta.model.objects.filter(
+            user=attrs['user'], recipe=attrs['recipe']
+        ).exists():
+            raise serializers.ValidationError(
+                f'Рецепт уже в {self.Meta.model._meta.verbose_name}.'
+            )
+        return attrs
+
+    def to_representation(self, instance):
+        return RecipeShortSerializer(
+            instance.recipe,
+            context=self.context,
+        ).data
+
+
+class FavouriteSerializer(UserRecipeRelationSerializer):
+    class Meta(UserRecipeRelationSerializer.Meta):
         model = Favourite
-        fields = ('user', 'recipe')
-
-    def validate(self, attrs):
-        if Favourite.objects.filter(
-            user=attrs['user'], recipe=attrs['recipe']
-        ).exists():
-            raise serializers.ValidationError('Рецепт уже в избранном.')
-        return attrs
-
-    def to_representation(self, instance):
-        return RecipeShortSerializer(
-            instance.recipe,
-            context=self.context,
-        ).data
 
 
-class ShoppingCartSerializer(serializers.ModelSerializer):
-    class Meta:
+class ShoppingCartSerializer(UserRecipeRelationSerializer):
+    class Meta(UserRecipeRelationSerializer.Meta):
         model = ShoppingCart
-        fields = ('user', 'recipe')
-
-    def validate(self, attrs):
-        if ShoppingCart.objects.filter(
-            user=attrs['user'], recipe=attrs['recipe']
-        ).exists():
-            raise serializers.ValidationError('Рецепт уже в списке покупок.')
-        return attrs
-
-    def to_representation(self, instance):
-        return RecipeShortSerializer(
-            instance.recipe,
-            context=self.context,
-        ).data

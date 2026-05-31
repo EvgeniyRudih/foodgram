@@ -61,7 +61,7 @@ class Tag(models.Model):
         ordering = ('name',)
 
     def __str__(self):
-        return self.name[:20]
+        return self.name[:STR_REPRESENTATION_LENGTH]
 
 
 class Recipe(models.Model):
@@ -109,7 +109,7 @@ class Recipe(models.Model):
         ordering = ('-pub_date',)
 
     def __str__(self):
-        return self.name[:20]
+        return self.name[:STR_REPRESENTATION_LENGTH]
 
 
 class RecipeIngredient(models.Model):
@@ -145,8 +145,8 @@ class RecipeIngredient(models.Model):
 
     def __str__(self):
         return (
-            f'{self.ingredient.name[:20]} '
-            f'в {self.recipe.name[:20]}'
+            f'{self.ingredient.name[:STR_REPRESENTATION_LENGTH]} '
+            f'в {self.recipe.name[:STR_REPRESENTATION_LENGTH]}'
         )
 
 

@@ -1,5 +1,7 @@
+from io import BytesIO
+
 from django.db.models import Count, Exists, OuterRef, Sum
-from django.http import HttpResponse
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -95,7 +97,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return RecipeReadSerializer
         return RecipeWriteSerializer
 
-    def create_user_recipe_relation(self, serializer_class, user, recipe):
+    def create_user_recipe_relation(self, serializer_class, user, pk):
+        recipe = get_object_or_404(Recipe, id=pk)
         serializer = serializer_class(
             data={'user': user.id, 'recipe': recipe.id},
             context={'request': self.request},
@@ -105,7 +108,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def delete_user_recipe_relation(model, user, recipe):
+    def delete_user_recipe_relation(model, user, pk):
+        recipe = get_object_or_404(Recipe, id=pk)
         deleted, _ = model.objects.filter(user=user, recipe=recipe).delete()
         if not deleted:
             return Response(
@@ -121,15 +125,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
         url_path='favorite',
     )
     def favorite(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
-        return self.create_user_recipe_relation(FavouriteSerializer,
-                                                request.user, recipe)
+        return self.create_user_recipe_relation(
+            FavouriteSerializer,
+            request.user,
+            pk,
+        )
 
     @favorite.mapping.delete
     def delete_favorite(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
-        return self.delete_user_recipe_relation(Favourite,
-                                                request.user, recipe)
+        return self.delete_user_recipe_relation(
+            Favourite,
+            request.user,
+            pk,
+        )
 
     @action(
         detail=True,
@@ -138,17 +146,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
         url_path='shopping_cart',
     )
     def shopping_cart(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
-        return self.create_user_recipe_relation(ShoppingCartSerializer,
-                                                request.user, recipe)
+        return self.create_user_recipe_relation(
+            ShoppingCartSerializer,
+            request.user,
+            pk,
+        )
 
     @shopping_cart.mapping.delete
     def delete_shopping_cart(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
         return self.delete_user_recipe_relation(
             ShoppingCart,
             request.user,
-            recipe,
+            pk,
         )
 
     @action(
@@ -159,18 +168,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         ingredients = RecipeIngredient.objects.filter(
-            recipe__shopping_cart__user=request.user
+            recipe__shoppingcarts__user=request.user
         ).values(
             'ingredient__name',
             'ingredient__measurement_unit',
         ).annotate(amount_sum=Sum('amount')).order_by('ingredient__name')
 
         content = format_shopping_cart(ingredients)
-        response = HttpResponse(content,
-                                content_type='text/plain; charset=utf-8')
-        response['Content-Disposition'] = 'attachment; ' \
-            'filename="shopping_cart.txt"'
-        return response
+        buffer = BytesIO(content.encode('utf-8'))
+        return FileResponse(
+            buffer,
+            as_attachment=True,
+            filename='shopping_cart.txt',
+            content_type='text/plain; charset=utf-8',
+        )
 
     @action(
         detail=True,
@@ -190,14 +201,6 @@ class UserViewSet(DjoserUserViewSet):
     queryset = User.objects.all()
     pagination_class = PageNumberLimitPagination
 
-    def get_queryset(self):
-        return super().get_queryset()
-
-    def get_serializer_class(self):
-        if self.action in ('subscriptions', 'subscribe'):
-            return UserWithRecipesSerializer
-        return UserSerializer
-
     @action(
         detail=False,
         methods=('get',),
@@ -205,12 +208,16 @@ class UserViewSet(DjoserUserViewSet):
         url_path='subscriptions',
     )
     def subscriptions(self, request):
-        authors = self.get_queryset().filter(
-            author_followers__user=request.user
-        ).annotate(recipes_count=Count('recipes'))
+        authors = User.objects.filter(
+            subscriptions_to_the_author__user=request.user
+        ).annotate(
+            recipes_count=Count('recipes')
+        ).order_by('id')
         page = self.paginate_queryset(authors)
         serializer = UserWithRecipesSerializer(
-            page, many=True, context={'request': request},
+            page,
+            many=True,
+            context={'request': request},
         )
         return self.get_paginated_response(serializer.data)
 
@@ -268,6 +275,7 @@ class UserViewSet(DjoserUserViewSet):
             request.user,
             data=request.data,
             partial=False,
+            context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
