@@ -51,7 +51,7 @@ class RecipeAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.annotate(
-            _favourites_count=Count('subscribers', distinct=True)
+            _favourites_count=Count('favourites', distinct=True)
         ).prefetch_related('tags', 'ingredients')
 
     @admin.display(description='Ингредиенты')
