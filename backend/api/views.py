@@ -212,7 +212,7 @@ class UserViewSet(DjoserUserViewSet):
             subscriptions_to_the_author__user=request.user
         ).annotate(
             recipes_count=Count('recipes')
-        ).order_by('id')
+        )
         page = self.paginate_queryset(authors)
         serializer = UserWithRecipesSerializer(
             page,
