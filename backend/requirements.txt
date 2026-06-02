@@ -7,3 +7,4 @@ psycopg2-binary==2.9.10
 gunicorn==22.0.0
 python-dotenv==1.0.1
 django-cors-headers==4.3.1
+drf-extra-fields==3.7.0
