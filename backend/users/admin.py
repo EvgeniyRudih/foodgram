@@ -35,7 +35,8 @@ class FoodgramUserAdmin(UserAdmin):
         queryset = super().get_queryset(request)
         return queryset.annotate(
             _recipes_count=Count('recipes', distinct=True),
-            _followers_count=Count('following', distinct=True),
+            _followers_count=Count('subscriptions_to_the_author',
+                                   distinct=True),
         )
 
     @admin.display(description='Рецепты', ordering='_recipes_count')
